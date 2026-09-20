@@ -1,31 +1,154 @@
 # FlowSync
 
-Proyecto de práctica del curso: gestión de tareas en equipo. API en AdonisJS 7 (`backend/`) + frontend en React 19 + Vite (`frontend/`).
+Proyecto de práctica del curso: gestión de tareas en equipo. API en **AdonisJS 7 + SQLite** (`backend/`) y frontend en **React 19 + Vite** (`frontend/`).
 
-## Empezar
+Este es el sistema sobre el que trabajas en el Módulo 8. Léelo entero antes de empezar: además de cómo levantarlo, aquí está **el ejercicio y cómo se entrega**.
+
+## Qué necesitas, y cómo compruebas que lo tienes
+
+Una línea por requisito, con el comando que lo verifica y el síntoma de tenerlo mal.
+
+- **Node 24** (la versión con soporte de largo plazo): `node -v` responde `v24.x`. Con Node 20, `make setup` muere con `ERR_UNKNOWN_FILE_EXTENSION ".ts"`; con la 22 arranca entre decenas de avisos `EBADENGINE`.
+- **make**: `make --version`. Si falta, verás `command not found: make`.
+- **git**: `git --version`. Si falta, verás `command not found: git`.
+- **Claude Code 2.1.269 o posterior**: `claude --version`. En versiones anteriores, el comando que mide responde *"currently in early access"* y no ejecuta nada. Se actualiza con `claude update`.
+
+**Dónde funciona esto:** macOS y Linux tal cual. **En Windows, dentro del Subsistema de Windows para Linux (WSL, por sus siglas en inglés)**, y con **todo** hecho dentro: el clon, Node y `make`. Lo que instales en Windows no existe dentro de WSL. No sirve PowerShell, y el motivo se puede comprobar abriendo el `Makefile` de la raíz: sus atajos usan `cp`, `test` y `rm`, que son de shell de macOS y Linux.
+
+## Arrancarlo
+
+No hay `package.json` en la raíz. Los comandos de `npm` se ejecutan dentro de `backend/` y de `frontend/`, y el `Makefile` de la raíz ya lo hace por ti.
 
 ```bash
-git clone https://github.com/LIDR-academy/flowsync-ai4devs.git
+make setup   # solo la primera vez: instala deps, crea los .env, genera APP_KEY y migra
+```
+
+**Comprueba que vive antes de seguir**, o vas a depurar la medición cuando lo que falla es el proyecto:
+
+```bash
+cd backend && npm test    # tiene que terminar en verde
+```
+
+## La capa de agente
+
+Vive en la raíz y es **el material del ejercicio**, no un accesorio:
+
+- [`CLAUDE.md`](CLAUDE.md), con la arquitectura del proyecto y, al final, la sección **Reglas de proceso**: lo que hay que hacer antes de tocar código, cuándo se commitea y qué va al cerrar el trabajo. **Es el archivo que hoy está en el banquillo.**
+- [`AGENTS.md`](AGENTS.md), el mismo contenido para agentes que leen ese archivo.
+- `.claude/`, con los subagentes y las skills del proyecto.
+
+---
+
+# El ejercicio
+
+**Se hace antes del directo.** Son unos **45 minutos** y hay que ponerles un reloj.
+
+Vas a medir, sobre este proyecto, si una regla que lleva meses escrita en el archivo de instrucciones del agente se cumple de verdad. Es el mismo encargo que se resuelve en el directo, con la misma regla y el mismo archivo de salida. Lo que pones tú son los prompts.
+
+> 🚨 **Ve guardando cada prompt tal cual lo lanzas**, desde el primero. Al final se entregan, y reconstruirlos de memoria no vale: lo que se revisa es cómo lo pediste, no solo qué salió.
+
+## Cómo funciona este módulo
+
+Tres momentos, y conviene que los sepas antes de empezar:
+
+1. **Lo intentas tú**, aquí, sobre este proyecto. Entregas lo que te salga, con lo que tenga.
+2. **Lo ves resuelto en el directo.** El mentor hace esta misma medición sobre este mismo proyecto. Si no te salió, ahí ves que se puede y cómo.
+3. **Lo replicas después**, con los prompts del mentor, que te llegan por escrito.
+
+Por eso la entrega a medias no es un problema: **el paso 1 no se puntúa por completarlo**. Y por eso conviene mirar el directo sin teclear, porque lo vas a repetir con calma luego.
+
+> ⚠️ **La inteligencia artificial no es determinista, y aquí eso no es un aviso legal: es el objeto de estudio.** Si repites el encargo y sale distinto, no lo has hecho mal. Es exactamente lo que vienes a medir. Y cuando repliques este recorrido con los prompts del mentor, tampoco te van a salir sus mismas palabras: lo que se repite es la forma del recorrido, nunca el texto.
+
+> 💳 **Esto consume tu plan, y conviene saberlo antes de empezar.** Cada ensayo que lances es **una sesión de agente completa** contra tu cuenta de Claude. El ejercicio está dimensionado para que salgan **unos seis ensayos en total**, que es poco, y aun así merece que lo sepas antes que después. Dos costumbres que lo mantienen barato y que vas a usar siempre: **fija el modelo pequeño** al lanzar la medición, y **no repitas una tanda "por si acaso"** sin haber leído la anterior.
+
+## Parte A: la medición
+
+La regla que vas a medir está en `CLAUDE.md`, en su sección de reglas de proceso, y dice literalmente esto:
+
+> *"Un cambio que toque rutas, controladores, validadores o transformers de una capability se cierra en el mismo commit con el documento OpenAPI y el README de esa capability al día."*
+
+Lo que hay que averiguar es **en qué proporción de los intentos se cumple la parte del README**, con este encargo y no otro:
+
+> **"Añade a la capability `tasks` el endpoint `DELETE /api/v1/tasks/:id`, que borra una tarea y devuelve `204` sin cuerpo. Impleméntalo en el controlador que ya existe y declara su ruta junto a las demás de `tasks`."**
+
+Cinco pasos, y el orden importa:
+
+1. **Apunta tu apuesta antes de medir nada.** ¿Cuántas veces de cinco crees que el README de la capability va a quedar al día? Escríbela; es media línea y es lo que hace que el resultado te diga algo.
+2. **Prepara el encargo como un caso**, con el proyecto como punto de partida. La suite que se usa en el directo la tienes en el material del módulo: cópiala dentro del proyecto y lánzala desde su raíz.
+3. **Escribe la comprobación del resultado**: el README de la capability `tasks` tiene que mencionar el endpoint nuevo. Es un patrón sobre un archivo, no hace falta nada más.
+4. **Escribe también la comprobación de control**: que la ruta quedó declarada. Sirve para saber si el agente hizo el trabajo, porque si no lo hizo, lo otro no significa nada.
+5. **Lánzalo cinco veces** y anota el resultado de las dos comprobaciones.
+
+> ⚠️ **Cuando suene el reloj, para. Aunque esté a medias.** Tres ensayos leídos valen más que cinco a medio anotar, y decir cuántos hiciste es parte de la respuesta.
+
+## Parte B: las tres líneas
+
+En el mismo archivo, debajo de la medición. **Esta parte no se puede fallar**, y es la que hay que traer sí o sí: se responde igual de bien si la medición te salió redonda que si se te atascó a la mitad.
+
+1. **Tu apuesta y el resultado.** Si no llegaste a las cinco ejecuciones, di cuántas hiciste.
+2. **Qué harías con ese número**: borrar la regla, reescribirla, o convertirla en algo que se ejecute solo. Y por qué.
+3. **Una cosa que tu medición no está midiendo.** Siempre hay una, y detectarla vale más que el propio número.
+
+**El archivo de salida es `docs/evals/<tus-iniciales>.md`**, dentro del proyecto, con la parte A y la parte B. El directorio se crea con tu archivo.
+
+---
+
+# Cómo se entrega
+
+**Es un pull request (PR, por sus siglas en inglés) desde tu fork.** Cinco pasos.
+
+### 1. Forkea este repositorio
+
+Con el botón **Fork** de arriba. 🚨 **DESMARCA la casilla que dice copiar solo la rama por defecto**: viene marcada. Sobre un clon directo no tienes permiso de escritura, y aquí vas a crear una rama y commitear.
+
+```bash
+git clone git@github.com:<tu-usuario>/flowsync-ai4devs.git
 cd flowsync-ai4devs
-git checkout s2/start   # o la rama del módulo que estés cursando (te la indica el prework)
+git remote add upstream git@github.com:LIDR-academy/flowsync-ai4devs.git
+git fetch upstream
+git checkout -b s8/start upstream/s8/start
+make setup
 ```
 
-> Si el `clone` falla, avisa a tu TA.
+> 📌 La rama de partida se trae de `upstream`, no de tu fork: un fork es una foto del momento, y las ramas publicadas después no están ahí.
 
-## Arrancar la app
+> 📌 Si te sale `Permission denied (publickey)`, es SSH y no el fork. La guía oficial está en `docs.github.com/es/authentication/connecting-to-github-with-ssh`.
 
-El repo trae un `Makefile` con los atajos de desarrollo (nace en el Módulo 1). Con dos comandos tienes todo en marcha:
+### 2. Crea tu rama
 
 ```bash
-make setup   # solo la primera vez: instala deps, crea los .env y migra
-make start   # levanta backend (:3333) y frontend (:5173) a la vez
+git checkout -b evals-<tus-iniciales>
 ```
 
-`make start` arranca los dos servidores juntos; `Ctrl-C` los para. `make help` lista todos los targets.
+### 3. Haz el ejercicio
 
-- Backend en `http://localhost:3333`.
-- Frontend en `http://localhost:5173`. Apunta al backend por defecto; para cambiarlo, ajusta `VITE_API_URL` en `frontend/.env`.
+El archivo de la medición va en `docs/evals/`, con la Parte A y las tres líneas de la Parte B.
 
-> ¿Prefieres arrancar a mano, sin `make`? Los pasos por servidor (`npm install`, `.env`, migraciones, `npm run dev`) están en el Módulo 1 del asíncrono del curso.
+### 4. Rellena `prompts.md`
 
-Las instrucciones completas de prework (checklist + priming) están en el asíncrono del curso.
+Está en la raíz, con la plantilla puesta. **Es obligatorio y es la mitad de lo que se revisa**: lo que se mira no es solo tu resultado, es cómo lo pediste. Un prompt por bloque, con el modelo y la herramienta que usaste.
+
+### 5. Abre el pull request
+
+Contra este repositorio. Con tu rama empujada, GitHub te ofrece el botón arriba.
+
+```bash
+git add docs/evals prompts.md
+git commit -m "evals: la regla del README de capability, medida"
+git push -u origin evals-<tus-iniciales>
+```
+
+## El plazo
+
+**Antes del directo.** Lo que llegue a tiempo recibe feedback de tu TA antes de la sesión, que es el momento en que te sirve. Lo que llegue después **se marca como recibido pero no se revisa**: el feedback existe para que llegues al directo sabiendo dónde fallaste, y después de la sesión ya no puede hacer eso.
+
+## Antes de conectarte, comprueba
+
+- [ ] Estás en tu **fork**, en tu rama, y `git push` funciona.
+- [ ] `claude --version` responde **2.1.269 o posterior**.
+- [ ] `make setup` terminó y `cd backend && npm test` corre en verde.
+- [ ] Existe tu archivo en `docs/evals/`, con la Parte A y las tres líneas.
+- [ ] `prompts.md` está relleno, con modelo y herramienta en cada bloque.
+- [ ] El pull request está abierto.
+
+> La checklist completa para dejar el entorno listo está en la última lección del módulo asíncrono, «Ejercicio FlowSync».
