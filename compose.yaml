@@ -1,0 +1,45 @@
+# FlowSync — PostgreSQL para desarrollo y para pruebas.
+#
+# Dos servicios separados a propósito: la batería de pruebas nunca toca la base
+# de desarrollo. Puertos fuera del 5432 para no chocar con un PostgreSQL local.
+# Las credenciales son de desarrollo local, no secretos.
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: flowsync
+      POSTGRES_PASSWORD: flowsync
+      POSTGRES_DB: flowsync
+    ports:
+      - '54410:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # La imagen crea la base la primera vez y no acepta conexiones mientras
+      # tanto: hasta que esto responda, el servicio no está listo.
+      test: ['CMD-SHELL', 'pg_isready -U flowsync -d flowsync']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  db-test:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: flowsync
+      POSTGRES_PASSWORD: flowsync
+      POSTGRES_DB: flowsync_test
+    ports:
+      - '54411:5432'
+    # Efímera a propósito: en memoria y sin volumen. Cada arranque empieza de
+    # cero, y una batería que depende de lo que dejó la anterior no lo es.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U flowsync -d flowsync_test']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db-data:
